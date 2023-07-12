@@ -4,17 +4,11 @@ import distance
 import numpy as np
 from sklearn.cluster import AffinityPropagation
 import time
-import os
-import warnings
 import logging
 
 from evogfuzz.input import Input
 
-warnings.filterwarnings("ignore", message="ConvergenceWarning: Affinity propagation did not converge, this model may return degenerate cluster centers and labels.")
-warnings.filterwarnings("ignore", message="UserWarning: All samples have mutually equal similarities. Returning arbitrary cluster center(s).")
 
-
-logger = logging.getLogger()
 
 
 class Tournament:
@@ -72,7 +66,7 @@ class Tournament:
                 for index, cluster_id in enumerate(cluster_list):
                     exemplar = input_list[affprop.cluster_centers_indices_[cluster_id]]
                     cluster = np.unique(input_list[np.nonzero(affprop.labels_==cluster_id)])
-                    cluster_str = ", ".join(cluster)
+                    #cluster_str = ", ".join(cluster)
                     #logging.debug(" - *%s:* %s" % (exemplar, cluster_str))
 
                     exemplar_input_obj = [i for i in self.test_inputs if str(i)==exemplar][0]
