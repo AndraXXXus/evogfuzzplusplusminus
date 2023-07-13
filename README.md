@@ -6,6 +6,10 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 &nbsp;
 
+# Note
+
+This fork was created as a research-oriented student's project. We analysed EvoGFuzz and tried to improve its effectiveness through implementing clustering in the selection of inputs, in order to learn a better probabilistic grammar for the next generation of inputs. Besides said changes, this repository has only undergone slight adjustments - so please read the instructions below with caution.
+
 # EvoGFuzz
 
 Welcome to the **EvoGFuzz** repository! This repository houses the source code for the innovative grammar-based fuzzing tool EvoGFuzz, as first documented in our paper _Evolutionary Grammar-Based Fuzzing_ that was presented at [SSBSE'2020](http://ssbse2020.di.uniba.it/).
