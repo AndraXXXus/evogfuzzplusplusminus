@@ -1,7 +1,6 @@
 import logging
 from typing import Set, List
 import distance
-import numpy as np
 from sklearn.cluster import AffinityPropagation
 import time
 import logging
@@ -15,6 +14,29 @@ from sklearn.metrics import pairwise_distances
 import fastcluster
 from scipy.cluster.hierarchy import fcluster
 from scipy.spatial.distance import cosine
+import numpy as np
+from scipy.stats import median_abs_deviation
+from statistics import median
+import Levenshtein
+
+def distance_matrix_2_clusters_sets(distance_matrix, feature_vectors_dataframe):
+    dendogramm = fastcluster.linkage(distance_matrix, 'ward', preserve_input=False)
+
+    num_clust = int(feature_vectors_dataframe.shape[0] ** 0.5)
+
+    feature_vectors_index = feature_vectors_dataframe.index
+    clusters = fcluster(dendogramm, num_clust, criterion='maxclust')
+
+    clusters_sets = {}
+
+    for index in range(len(feature_vectors_index)):
+        clusters_index = clusters[index]
+        input_string = feature_vectors_index[index]
+        if clusters_index not in clusters_sets:
+            clusters_sets[clusters_index] = set()
+        clusters_sets[clusters_index].add(feature_vectors_index[index])
+
+    return clusters_sets
 
 class Tournament:
     def __init__(
@@ -71,23 +93,59 @@ class Tournament:
         return fittest
 
     def select_fittest_individuals_hierarchical_levenshtein(self):
+
         fittest: Set[Input] = set()
+
+        feature_vectors_dataframe = pd.DataFrame.from_dict({x:str(x )for x in self.test_inputs}).T
+        distance_matrix = pairwise_distances(feature_vectors_dataframe, metric=Levenshtein.ratio)
+        clusters_sets = distance_matrix_2_clusters_sets(distance_matrix, feature_vectors_dataframe)
+        middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
+        fittest = set([item for sublist in middle_ones for item in sublist])
+
         return fittest
-    def select_fittest_individuals_hierarchical_string(self):
+
+    def select_fittest_individuals_hierarchical_jaro(self):
         fittest: Set[Input] = set()
-        list(self.test_inputs)
-        jaro.jaro_winkler_metric(u'SHACKLEFORD', u'SHACKELFORD')
+
+        feature_vectors_dataframe = pd.DataFrame.from_dict({x: str(x) for x in self.test_inputs}).T
+        distance_matrix = pairwise_distances(feature_vectors_dataframe, metric=jaro.jaro_winkler_metric)
+        clusters_sets = distance_matrix_2_clusters_sets(distance_matrix, feature_vectors_dataframe)
+        middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
+        fittest = set([item for sublist in middle_ones for item in sublist])
+
         return fittest
+
     def select_fittest_individuals_hierarchical_feature_cos(self):
         fittest: Set[Input] = set()
 
+        feature_vectors_dataframe = self.input_2_dataframe()
+
+        distance_matrix = pairwise_distances(feature_vectors_dataframe, metric=cosine)
+
+        clusters_sets = distance_matrix_2_clusters_sets(distance_matrix, feature_vectors_dataframe)
+
+        middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
+
+        fittest = set([item for sublist in middle_ones for item in sublist]) # flatten
+
+        return fittest
+
+    def filter_clusters_by_size_median_plus_minus_mad(self, clusters_sets):
+        numbers = [len(clusters_sets[x]) for x in clusters_sets]
+        median_value = median(numbers)
+        median_absolute_deviation = median_abs_deviation(numbers)
+        median_minus_mad = median_value - median_absolute_deviation
+        median_plus_mad = median_value + median_absolute_deviation
+        middle_ones = [clusters_sets[x] for x in clusters_sets if
+                       median_minus_mad < len(clusters_sets[x]) < median_plus_mad]
+        return middle_ones
+
+    def input_2_dataframe(self):
         inputs_to_feature_vectors = {}
         collector = feature_collector.Collector(self.grammar)
-
         feature_name_2_key = {}
         for elem in collector.get_all_features():
             feature_name_2_key[elem.name] = elem.name + " " + elem.key
-
         for sample in self.test_inputs:
             gen_features = collector.collect_features(
                 Input(tree=sample.tree
@@ -98,30 +156,10 @@ class Tournament:
             for elem in gen_features:
                 gen_features2[feature_name_2_key[elem]] = gen_features[elem]
 
-            inputs_to_feature_vectors[str(sample)] = gen_features2
-
+            inputs_to_feature_vectors[sample] = gen_features2
         feature_vectors_dataframe = pd.DataFrame.from_dict(inputs_to_feature_vectors).T
+        return feature_vectors_dataframe
 
-        distance_matrix = pairwise_distances(feature_vectors_dataframe, metric=cosine)
-
-        dendogramm = fastcluster.linkage(distance_matrix, 'ward', preserve_input=False)
-
-        num_clust = int(feature_vectors_dataframe.shape[0] ** 0.5)
-
-        feature_vectors_index = feature_vectors_dataframe.index
-        clusters = fcluster(dendogramm, num_clust, criterion='maxclust')
-
-        clusters_sets = {}
-
-        for index in range(len(feature_vectors_index)):
-            clusters_index = clusters[index]
-            input_string = feature_vectors_index[index]
-            if clusters_index not in clusters_sets:
-                clusters_sets[clusters_index] = set()
-            clusters_sets[clusters_index].add(feature_vectors_index[index])
-
-
-        return fittest
     def select_fittest_individuals_julius(self):
         # logging.debug(len(self.test_inputs), self.tournament_rounds)
         # assert self.tournament_rounds < len(self.test_inputs)
