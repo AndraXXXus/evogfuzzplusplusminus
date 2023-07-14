@@ -20,7 +20,16 @@ from evogfuzz.input import Input
 from evogfuzz.types import GrammarType, Scenario
 from evogfuzz.grammar_transformation import get_transformed_grammar
 from evogfuzz.probabilistic_fuzzer import ProbabilisticGrammarMinerExtended
+from enum import Enum
 
+class Tournament_Selection_Mode(Enum):
+    NORMAL = 0
+    HIERARCHICAL_FEATURE_COS = 1
+    HIERARCHICAL_LEVENSHTEIN = 2
+    HIERARCHICAL_JARO = 3
+
+#Tournament_Selection_Mode = Enum('Tournament_Selection_Mode', ['NORMAL', 'HIERARCHICAL_FEATURE_COS',
+# 'HIERARCHICAL_LEVENSHTEIN','HIERARCHICAL_JARO'])
 
 class EvoGFrame:
     scenario: Scenario = Scenario.FUZZING
@@ -33,6 +42,7 @@ class EvoGFrame:
         fitness_function: Callable[[Input], float] = fitness_function_failure,
         iterations: int = 10,
         working_dir: Path = None,
+        tournament_selection_mode: Tournament_Selection_Mode = Tournament_Selection_Mode.NORMAL
     ):
         self.grammar = grammar
         self._oracle: Callable[[Input], OracleResult] = oracle
@@ -71,7 +81,7 @@ class EvoGFrame:
                     )
                 )
             )
-
+        self.tournament_selection_mode = tournament_selection_mode
         # Apply patch to fuzzingbook
         # helper.patch()
 
@@ -146,7 +156,7 @@ class EvoGFrame:
 
     def _select_fittest_individuals(self, test_inputs: Set[Input]) -> Set[Input]:
         fittest_individuals = Tournament(
-            test_inputs, self._tournament_number, self._tournament_size
+            test_inputs, self._tournament_number, self._tournament_size,self.grammar,self.tournament_selection_mode
         ).select_fittest_individuals()
 
         sum_fitness = sum([inp.fitness for inp in fittest_individuals])
@@ -274,7 +284,8 @@ class EvoGGen(EvoGFrame):
         grammar: Grammar,
         oracle: Callable[[Union[Input, str]], OracleResult],
         inputs: List[str],
-        fitness_function: Callable[[Input], float] = fitness_function_failure,
+        fitness_function
+        : Callable[[Input], float] = fitness_function_failure,
         iterations: int = 10,
         transform_grammar: bool = False,
     ):
