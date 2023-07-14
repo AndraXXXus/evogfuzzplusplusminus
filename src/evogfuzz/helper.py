@@ -17,6 +17,16 @@ from evogfuzz_formalizations import patch_file_location
 
 PATCH_ERROR = -3
 
+from enum import Enum
+class Tournament_Selection_Mode(Enum):
+    NORMAL = 0
+    HIERARCHICAL_FEATURE_COS = 1
+    HIERARCHICAL_LEVENSHTEIN = 2
+    HIERARCHICAL_JARO = 3
+
+#Tournament_Selection_Mode = Enum('Tournament_Selection_Mode', ['NORMAL', 'HIERARCHICAL_FEATURE_COS',
+# 'HIERARCHICAL_LEVENSHTEIN','HIERARCHICAL_JARO'])
+
 PATCH = b"""
 --- a/docs/code/GrammarCoverageFuzzer.py
 +++ b/docs/code/GrammarCoverageFuzzer.py

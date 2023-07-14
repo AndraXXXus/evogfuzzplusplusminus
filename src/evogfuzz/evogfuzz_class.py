@@ -20,16 +20,7 @@ from evogfuzz.input import Input
 from evogfuzz.types import GrammarType, Scenario
 from evogfuzz.grammar_transformation import get_transformed_grammar
 from evogfuzz.probabilistic_fuzzer import ProbabilisticGrammarMinerExtended
-from enum import Enum
-
-class Tournament_Selection_Mode(Enum):
-    NORMAL = 0
-    HIERARCHICAL_FEATURE_COS = 1
-    HIERARCHICAL_LEVENSHTEIN = 2
-    HIERARCHICAL_JARO = 3
-
-#Tournament_Selection_Mode = Enum('Tournament_Selection_Mode', ['NORMAL', 'HIERARCHICAL_FEATURE_COS',
-# 'HIERARCHICAL_LEVENSHTEIN','HIERARCHICAL_JARO'])
+from evogfuzz.helper import Tournament_Selection_Mode
 
 class EvoGFrame:
     scenario: Scenario = Scenario.FUZZING

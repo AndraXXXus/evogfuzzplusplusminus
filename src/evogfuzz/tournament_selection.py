@@ -6,10 +6,15 @@ from sklearn.cluster import AffinityPropagation
 import time
 import logging
 from alhazen import feature_collector
-from evogfuzz.input import Input
-from evogfuzz.evogfuzz_class import Tournament_Selection_Mode
+from evogfuzz.helper import Tournament_Selection_Mode
 from fuzzingbook.GrammarFuzzer import Grammar
 import jaro
+from evogfuzz.input import Input
+import pandas as pd
+from sklearn.metrics import pairwise_distances
+import fastcluster
+from scipy.cluster.hierarchy import fcluster
+from scipy.spatial.distance import cosine
 
 class Tournament:
     def __init__(
@@ -67,30 +72,59 @@ class Tournament:
 
     def select_fittest_individuals_hierarchical_levenshtein(self):
         fittest: Set[Input] = set()
-        pass
+        return fittest
     def select_fittest_individuals_hierarchical_string(self):
         fittest: Set[Input] = set()
         list(self.test_inputs)
         jaro.jaro_winkler_metric(u'SHACKLEFORD', u'SHACKELFORD')
-        pass
+        return fittest
     def select_fittest_individuals_hierarchical_feature_cos(self):
         fittest: Set[Input] = set()
 
         inputs_to_feature_vectors = {}
         collector = feature_collector.Collector(self.grammar)
+
+        feature_name_2_key = {}
+        for elem in collector.get_all_features():
+            feature_name_2_key[elem.name] = elem.name + " " + elem.key
+
         for sample in self.test_inputs:
             gen_features = collector.collect_features(
                 Input(tree=sample.tree
                       )
             )
-            inputs_to_feature_vectors[sample] = gen_features
 
-        return inputs_to_feature_vectors
+            gen_features2 = {}
+            for elem in gen_features:
+                gen_features2[feature_name_2_key[elem]] = gen_features[elem]
+
+            inputs_to_feature_vectors[str(sample)] = gen_features2
+
+        feature_vectors_dataframe = pd.DataFrame.from_dict(inputs_to_feature_vectors).T
+
+        distance_matrix = pairwise_distances(feature_vectors_dataframe, metric=cosine)
+
+        dendogramm = fastcluster.linkage(distance_matrix, 'ward', preserve_input=False)
+
+        num_clust = int(feature_vectors_dataframe.shape[0] ** 0.5)
+
+        feature_vectors_index = feature_vectors_dataframe.index
+        clusters = fcluster(dendogramm, num_clust, criterion='maxclust')
+
+        clusters_sets = {}
+
+        for index in range(len(feature_vectors_index)):
+            clusters_index = clusters[index]
+            input_string = feature_vectors_index[index]
+            if clusters_index not in clusters_sets:
+                clusters_sets[clusters_index] = set()
+            clusters_sets[clusters_index].add(feature_vectors_index[index])
+
+
+        return fittest
     def select_fittest_individuals_julius(self):
         # logging.debug(len(self.test_inputs), self.tournament_rounds)
         # assert self.tournament_rounds < len(self.test_inputs)
-
-
 
         fittest: Set[Input] = set()
 
