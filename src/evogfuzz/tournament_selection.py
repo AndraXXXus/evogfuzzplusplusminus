@@ -255,18 +255,14 @@ class Tournament:
         return fittest
 
     def calculate_cosine_similarity(self):
-        # Create a CountVectorizer object and specify analyzer='char'
         ordered_inputs = [x for x in self.test_inputs]
         strings = [str(x) for x in ordered_inputs]
         vectorizer = CountVectorizer(analyzer='char')
 
-        # Fit and transform the input strings into a matrix of character counts
         matrix = vectorizer.fit_transform(strings)
 
-        # Compute the cosine similarity matrix
         similarity_matrix = cosine_similarity(matrix)
 
-        # Convert the cosine similarity matrix into a DataFrame
         df = pd.DataFrame(similarity_matrix, columns=ordered_inputs, index=ordered_inputs)
 
         return df
