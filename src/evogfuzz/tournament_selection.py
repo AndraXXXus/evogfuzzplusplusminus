@@ -90,11 +90,18 @@ class Tournament:
         self.feature_vectors_dataframe = self.calculate_cosine_similarity()
         distance_matrix = pairwise_distances(self.feature_vectors_dataframe, metric=method)
         clusters_sets = self.distance_matrix_2_clusters_sets(distance_matrix)
-        middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
-        fittest = set([item for sublist in middle_ones for item in sublist])
-        return fittest
+        if method == "cosine":
+            #pd.DataFrame.median(aaa222.T)
+            for elem in clusters_sets:
+                print([(str(x),x.feature()) for x in clusters_sets[elem]])
+            middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
+        else:
+            middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
+        self.test_inputs = set([item for sublist in middle_ones for item in sublist])
+        return self.select_fittest_individuals_normal()
 
     def select_fittest_individuals_hierarchical_jaro(self):
+        print(1)
         return self.select_fittest_individuals_hierarchical_custom_method(jaro_jaro_winkler_metric)
 
     def select_fittest_individuals_hierarchical_feature_cos(self):
