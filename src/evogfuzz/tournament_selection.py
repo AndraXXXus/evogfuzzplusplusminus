@@ -18,26 +18,15 @@ import numpy as np
 from scipy.stats import median_abs_deviation
 from statistics import median
 import Levenshtein
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-def distance_matrix_2_clusters_sets(distance_matrix, feature_vectors_dataframe):
-    dendogramm = fastcluster.linkage(distance_matrix, 'ward', preserve_input=False)
 
-    num_clust = int(feature_vectors_dataframe.shape[0] ** 0.5)
 
-    feature_vectors_index = feature_vectors_dataframe.index
-    clusters = fcluster(dendogramm, num_clust, criterion='maxclust')
-
-    clusters_sets = {}
-
-    for index in range(len(feature_vectors_index)):
-        clusters_index = clusters[index]
-        input_string = feature_vectors_index[index]
-        if clusters_index not in clusters_sets:
-            clusters_sets[clusters_index] = set()
-        clusters_sets[clusters_index].add(feature_vectors_index[index])
-
-    return clusters_sets
-
+def Levenshtein_ratio(inp1,inp2):
+    return Levenshtein.ratio(str(inp1),str(inp2))
+def jaro_jaro_winkler_metric(inp1,inp2):
+    return jaro.jaro_winkler_metric(str(inp1),str(inp2))
 class Tournament:
     def __init__(
             self,
@@ -45,13 +34,15 @@ class Tournament:
             tournament_rounds: int = 10,
             tournament_size: int = 10,
             grammar: Grammar = None,
-            tournament_selection_mode: Tournament_Selection_Mode = Tournament_Selection_Mode.NORMAL
+            tournament_selection_mode: Tournament_Selection_Mode = Tournament_Selection_Mode.NORMAL,
+            feature_vectors_dataframe: pd.DataFrame = None
     ):
         self.test_inputs: Set[Input] = test_inputs
         self.tournament_rounds: int = tournament_rounds
         self.tournament_size: int = tournament_size
         self.grammar = grammar
         self.tournament_selection_mode = tournament_selection_mode
+        self.feature_vectors_dataframe = feature_vectors_dataframe
 
     def select_fittest_individuals(self):
         if self.tournament_selection_mode == Tournament_Selection_Mode.NORMAL:
@@ -93,44 +84,30 @@ class Tournament:
         return fittest
 
     def select_fittest_individuals_hierarchical_levenshtein(self):
+        return self.select_fittest_individuals_hierarchical_custom_method(Levenshtein_ratio)
 
-        fittest: Set[Input] = set()
-
-        feature_vectors_dataframe = pd.DataFrame.from_dict({x:str(x )for x in self.test_inputs}).T
-        distance_matrix = pairwise_distances(feature_vectors_dataframe, metric=Levenshtein.ratio)
-        clusters_sets = distance_matrix_2_clusters_sets(distance_matrix, feature_vectors_dataframe)
+    def select_fittest_individuals_hierarchical_custom_method(self, method):
+        self.feature_vectors_dataframe = self.calculate_cosine_similarity()
+        distance_matrix = pairwise_distances(self.feature_vectors_dataframe, metric=method)
+        clusters_sets = self.distance_matrix_2_clusters_sets(distance_matrix)
         middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
         fittest = set([item for sublist in middle_ones for item in sublist])
-
         return fittest
 
     def select_fittest_individuals_hierarchical_jaro(self):
-        fittest: Set[Input] = set()
-
-        feature_vectors_dataframe = pd.DataFrame.from_dict({x: str(x) for x in self.test_inputs}).T
-        distance_matrix = pairwise_distances(feature_vectors_dataframe, metric=jaro.jaro_winkler_metric)
-        clusters_sets = distance_matrix_2_clusters_sets(distance_matrix, feature_vectors_dataframe)
-        middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
-        fittest = set([item for sublist in middle_ones for item in sublist])
-
-        return fittest
+        return self.select_fittest_individuals_hierarchical_custom_method(jaro_jaro_winkler_metric)
 
     def select_fittest_individuals_hierarchical_feature_cos(self):
-        fittest: Set[Input] = set()
+        self.feature_vectors_dataframe = self.input_2_dataframe_with_features()
+        return self.select_fittest_individuals_hierarchical_custom_method("cosine")
 
-        feature_vectors_dataframe = self.input_2_dataframe()
+    @staticmethod
+    def filter_clusters_by_size_median_plus_minus_mad(clusters_sets):
+        for elem in clusters_sets:
+            print(elem, [str(x) for x in clusters_sets[elem]])
+        for elem in clusters_sets:
+            print(elem, len(clusters_sets[elem]))
 
-        distance_matrix = pairwise_distances(feature_vectors_dataframe, metric=cosine)
-
-        clusters_sets = distance_matrix_2_clusters_sets(distance_matrix, feature_vectors_dataframe)
-
-        middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
-
-        fittest = set([item for sublist in middle_ones for item in sublist]) # flatten
-
-        return fittest
-
-    def filter_clusters_by_size_median_plus_minus_mad(self, clusters_sets):
         numbers = [len(clusters_sets[x]) for x in clusters_sets]
         median_value = median(numbers)
         median_absolute_deviation = median_abs_deviation(numbers)
@@ -140,7 +117,7 @@ class Tournament:
                        median_minus_mad < len(clusters_sets[x]) < median_plus_mad]
         return middle_ones
 
-    def input_2_dataframe(self):
+    def input_2_dataframe_with_features(self):
         inputs_to_feature_vectors = {}
         collector = feature_collector.Collector(self.grammar)
         feature_name_2_key = {}
@@ -276,3 +253,39 @@ class Tournament:
             
 
         return fittest
+
+    def calculate_cosine_similarity(self):
+        # Create a CountVectorizer object and specify analyzer='char'
+        ordered_inputs = [x for x in self.test_inputs]
+        strings = [str(x) for x in ordered_inputs]
+        vectorizer = CountVectorizer(analyzer='char')
+
+        # Fit and transform the input strings into a matrix of character counts
+        matrix = vectorizer.fit_transform(strings)
+
+        # Compute the cosine similarity matrix
+        similarity_matrix = cosine_similarity(matrix)
+
+        # Convert the cosine similarity matrix into a DataFrame
+        df = pd.DataFrame(similarity_matrix, columns=ordered_inputs, index=ordered_inputs)
+
+        return df
+
+    def distance_matrix_2_clusters_sets(self, distance_matrix):
+        dendogramm = fastcluster.linkage(distance_matrix, 'ward', preserve_input=False)
+
+        num_clust = int(self.feature_vectors_dataframe.shape[0] ** 0.5)
+
+        feature_vectors_index = self.feature_vectors_dataframe.index
+        clusters = fcluster(dendogramm, num_clust, criterion='maxclust')
+
+        clusters_sets = {}
+
+        for index in range(len(feature_vectors_index)):
+            clusters_index = clusters[index]
+            input_string = feature_vectors_index[index]
+            if clusters_index not in clusters_sets:
+                clusters_sets[clusters_index] = set()
+            clusters_sets[clusters_index].add(feature_vectors_index[index])
+
+        return clusters_sets
