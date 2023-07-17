@@ -91,11 +91,13 @@ class Tournament:
         distance_matrix = pairwise_distances(self.feature_vectors_dataframe, metric=method)
         clusters_sets = self.distance_matrix_2_clusters_sets(distance_matrix)
         if method == "cosine":
-            #pd.DataFrame.median(aaa222.T)
-            for elem in clusters_sets:
-                print([(str(x),x.feature()) for x in clusters_sets[elem]])
+            #pd.DataFrame.modus(aaa222.T)
+            #for elem in clusters_sets:
+            #    print([(str(x), x.feature()) for x in clusters_sets[elem]])
             middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
         else:
+            #for elem in clusters_sets:
+            #    print([(str(x), x.feature()) for x in clusters_sets[elem]])
             middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
         self.test_inputs = set([item for sublist in middle_ones for item in sublist])
         return self.select_fittest_individuals_normal()
@@ -125,23 +127,25 @@ class Tournament:
         return middle_ones
 
     def input_2_dataframe_with_features(self):
-        inputs_to_feature_vectors = {}
-        collector = feature_collector.Collector(self.grammar)
-        feature_name_2_key = {}
-        for elem in collector.get_all_features():
-            feature_name_2_key[elem.name] = elem.name + " " + elem.key
-        for sample in self.test_inputs:
-            gen_features = collector.collect_features(
-                Input(tree=sample.tree
-                      )
-            )
+        def inputs_to_feature_vectors_func():
+            inputs_to_feature_vectors = {}
+            collector = feature_collector.Collector(self.grammar)
+            feature_name_2_key = {}
+            for elem in collector.get_all_features():
+                feature_name_2_key[elem.name] = elem.name + " " + elem.key
+            for sample in self.test_inputs:
+                gen_features = collector.collect_features(
+                    Input(tree=sample.tree
+                          )
+                )
 
-            gen_features2 = {}
-            for elem in gen_features:
-                gen_features2[feature_name_2_key[elem]] = gen_features[elem]
+                gen_features2 = {}
+                for elem in gen_features:
+                    gen_features2[feature_name_2_key[elem]] = gen_features[elem]
 
-            inputs_to_feature_vectors[sample] = gen_features2
-        feature_vectors_dataframe = pd.DataFrame.from_dict(inputs_to_feature_vectors).T
+                inputs_to_feature_vectors[sample] = gen_features2
+
+        feature_vectors_dataframe = pd.DataFrame.from_dict(inputs_to_feature_vectors_func()).T
         return feature_vectors_dataframe
 
     def select_fittest_individuals_julius(self):
