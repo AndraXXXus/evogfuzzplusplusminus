@@ -1,4 +1,5 @@
 import sys
+import os
 import unittest
 from evogfuzz.evogfuzz_class import EvoGFuzz
 
@@ -9,6 +10,7 @@ from evogfuzz_formalizations.calculator import (
 )
 from evogfuzz.oracle import OracleResult
 from evogfuzz.fitness_functions import fitness_function_failure as fitness_function
+from evogfuzz.settings import *
 
 
 class TestEvoGFuzz(unittest.TestCase):
@@ -42,4 +44,5 @@ class TestEvoGFuzz(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    os.environ["Tournament_Selection_Mode"] = str(TOURNAMENT_SELECTION_MODE)
     unittest.main()

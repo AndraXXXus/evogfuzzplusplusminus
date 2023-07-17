@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Set, List
 import distance
 from sklearn.cluster import AffinityPropagation
@@ -20,7 +21,10 @@ import Levenshtein
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+RED = "\033[91m"
+NORMAL = "\033[0m"
 
+#print(os.environ.get("Tournament_Selection_Mode"))
 
 def Levenshtein_ratio(inp1,inp2):
     return Levenshtein.ratio(str(inp1), str(inp2))
@@ -44,21 +48,63 @@ class Tournament:
         self.feature_vectors_dataframe = feature_vectors_dataframe
 
     def select_fittest_individuals(self):
+        self.tournament_selection_mode = Tournament_Selection_Mode(int(os.environ.get("Tournament_Selection_Mode", 0)))
+        fittest_individuals = None
+        input_count = len(self.test_inputs)
+        print(f"test_inputs[{input_count}]:")
+        fit_count = 0
+        for i in self.test_inputs:
+            print(str(i)+" ", end="")
+            if i.fitness > 0:
+                fit_count+=1
+        print(f"\nfit_count: {fit_count}")
+        print()
         if self.tournament_selection_mode == Tournament_Selection_Mode.NORMAL:
-            return self.select_fittest_individuals_normal()
+            fittest_individuals =  self.select_fittest_individuals_normal()
 
         elif self.tournament_selection_mode == Tournament_Selection_Mode.HIERARCHICAL_FEATURE_COS:
-            return self.select_fittest_individuals_hierarchical_feature_cos()
+            fittest_individuals =  self.select_fittest_individuals_hierarchical_feature_cos()
 
         elif self.tournament_selection_mode == Tournament_Selection_Mode.HIERARCHICAL_LEVENSHTEIN:
-            return self.select_fittest_individuals_hierarchical_levenshtein()
+            #fittest_individuals =  self.select_fittest_individuals_hierarchical_levenshtein()
+            fittest_individuals = self.select_fittest_individuals_julius()
 
         elif self.tournament_selection_mode == Tournament_Selection_Mode.HIERARCHICAL_JARO:
-            return self.select_fittest_individuals_hierarchical_jaro()
+            fittest_individuals =  self.select_fittest_individuals_hierarchical_jaro()
 
         else:
             print("unknown enum, NORMAL mode selected")
-            return self.select_fittest_individuals_normal()
+            fittest_individuals =  self.select_fittest_individuals_normal()
+
+        print(f"fittest[{len(fittest_individuals)}]:")
+        
+        correct_count = 0
+        for fi in fittest_individuals:
+            if fi.fitness == 0:
+                print(RED, end="")
+            else:
+                correct_count +=1
+                print("\033[0m", end="")
+            print(str(fi)+" ", end="")
+        if len(fittest_individuals)==0:
+            print(RED+"[empty]")
+        print("\033[0m\n\n---------------")
+
+        if len(fittest_individuals)>0:
+            correctness = round((correct_count/len(fittest_individuals))*100, 2)
+        else:
+            correctness = "null"
+
+        file_name = ""
+
+        if os.environ.get("Tournament_Selection_Mode")=="0":
+            file_name = "original"
+        elif os.environ.get("Tournament_Selection_Mode")=="2":
+            file_name = "julius_levenshtein"
+
+        with open(file_name+".csv","a") as f:
+            f.write(str(input_count)+","+str(len(fittest_individuals))+","+str(correctness)+"\n")
+        return fittest_individuals
 
     def select_fittest_individuals_normal(self):
         # print(len(self.test_inputs), self.tournament_rounds)
@@ -151,7 +197,7 @@ class Tournament:
 
 
         max_variety = 15
-        aimed_sample_count = 30
+        aimed_sample_count = 24
         initial_max_distance = 40
         max_distance = initial_max_distance
 
@@ -172,7 +218,6 @@ class Tournament:
 
         if max_variety>=len(input_list):
             max_variety = int(len(input_list)/2)+1
-        logging.debug("input sample count: "+str(len(input_list)))
 
         # if max_distance was not increased, use clustering for selection
         if max_distance <= initial_max_distance:
@@ -183,8 +228,8 @@ class Tournament:
                 start = time.time()
                 lev_similarity = float(-1)*np.array([[distance.levenshtein(i1,i2) for i1 in input_list if distance.levenshtein(i1,i2)<=max_distance] for i2 in input_list])
                 lev_calc_time = time.time()-start
-                if lev_calc_time>0.25:
-                    logging.debug("long levenshtein calculation time: "+str(lev_calc_time)+"s")
+                if lev_calc_time>=1:
+                    print("long levenshtein calculation time: "+str(lev_calc_time)+"s")
 
 
                 affprop = AffinityPropagation(affinity="precomputed", damping=0.7)
@@ -220,8 +265,10 @@ class Tournament:
 
         # for long string samples, use primitive selection
         else:
+            print()
+            print(RED+"OG")
+            print(NORMAL)
 
-            logging.debug("og")
             try:
                 for _ in range(self.tournament_rounds):
                     current_round: List[Input] = list(self.test_inputs)[
@@ -235,27 +282,6 @@ class Tournament:
                     fittest.add(fi)
             except IndexError:
                 logging.debug("Tournament Size too big! No more Inputs left to select!")
-
-        logging.debug("added input samples: "+str(len(fittest)))
-        
-        if len(fittest)/len(input_list)<0.1 and len(input_list)<10:
-            logging.debug(f"less than 10%, only {len(fittest)}/{len(input_list)} added inputs out of this this list:")
-            for i in input_list:
-                if [sample for sample in self.test_inputs if str(sample)==i][0] in fittest:
-                    logging.debug("\033[91m", end="")
-                else:
-                    logging.debug("\033[0m", end="")
-                logging.debug(str(i)+" ", end="")
-                logging.debug("\033[0m", end="")
-        if len(fittest)/len(input_list)>=0.9:
-            logging.debug(f"more than 90%, {len(fittest)}/{len(input_list)} added inputs out of this this list:")
-            for i in input_list:
-                if [sample for sample in self.test_inputs if str(sample)==i][0] in fittest:
-                    logging.debug("\033[96m", end="")
-                else:
-                    logging.debug("\033[0m", end="")
-                logging.debug(str(i)+" ", end="")
-                logging.debug("\033[0m", end="")
             
 
         return fittest
