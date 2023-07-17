@@ -24,9 +24,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 def Levenshtein_ratio(inp1,inp2):
-    return Levenshtein.ratio(str(inp1),str(inp2))
+    return Levenshtein.ratio(str(inp1), str(inp2))
 def jaro_jaro_winkler_metric(inp1,inp2):
-    return jaro.jaro_winkler_metric(str(inp1),str(inp2))
+    return jaro.jaro_winkler_metric(str(inp1), str(inp2))
 class Tournament:
     def __init__(
             self,
