@@ -6,3 +6,10 @@ isla-solver~=1.10.0
 distance>=0.1.3
 numpy
 jupyter
+jaro-winkler
+pandas
+fastcluster
+scipy
+statistics
+levenshtein
+sklearn

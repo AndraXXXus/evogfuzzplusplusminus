@@ -7,13 +7,12 @@ import logging
 from alhazen import feature_collector
 from evogfuzz.helper import Tournament_Selection_Mode
 from fuzzingbook.GrammarFuzzer import Grammar
-import jaro
 from evogfuzz.input import Input
+import jaro
 import pandas as pd
 from sklearn.metrics import pairwise_distances
 import fastcluster
 from scipy.cluster.hierarchy import fcluster
-from scipy.spatial.distance import cosine
 import numpy as np
 from scipy.stats import median_abs_deviation
 from statistics import median
@@ -90,20 +89,11 @@ class Tournament:
         self.feature_vectors_dataframe = self.calculate_cosine_similarity()
         distance_matrix = pairwise_distances(self.feature_vectors_dataframe, metric=method)
         clusters_sets = self.distance_matrix_2_clusters_sets(distance_matrix)
-        if method == "cosine":
-            #pd.DataFrame.modus(aaa222.T)
-            #for elem in clusters_sets:
-            #    print([(str(x), x.feature()) for x in clusters_sets[elem]])
-            middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
-        else:
-            #for elem in clusters_sets:
-            #    print([(str(x), x.feature()) for x in clusters_sets[elem]])
-            middle_ones = self.filter_clusters_by_size_median_plus_minus_mad(clusters_sets)
+        middle_ones = self.filter_clusters_by_bug_log_precentile_median_plus_minus_mad(clusters_sets)
         self.test_inputs = set([item for sublist in middle_ones for item in sublist])
         return self.select_fittest_individuals_normal()
 
     def select_fittest_individuals_hierarchical_jaro(self):
-        print(1)
         return self.select_fittest_individuals_hierarchical_custom_method(jaro_jaro_winkler_metric)
 
     def select_fittest_individuals_hierarchical_feature_cos(self):
@@ -111,19 +101,24 @@ class Tournament:
         return self.select_fittest_individuals_hierarchical_custom_method("cosine")
 
     @staticmethod
-    def filter_clusters_by_size_median_plus_minus_mad(clusters_sets):
-        for elem in clusters_sets:
-            print(elem, [str(x) for x in clusters_sets[elem]])
-        for elem in clusters_sets:
-            print(elem, len(clusters_sets[elem]))
+    def filter_clusters_by_bug_log_precentile_median_plus_minus_mad(clusters_sets):
+        def get_bug_log_precentile(clusters_sets):
+            from math import log
+            clusters_2_log_perc = {}
+            for elem in clusters_sets:
+                fittnes_of_cluster = [x.fitness for x in clusters_sets[elem]]
+                log_fittnes_prec = log(sum(fittnes_of_cluster)+1)/log(len(fittnes_of_cluster)+1)
+                clusters_2_log_perc[elem]=log_fittnes_prec
+            return clusters_2_log_perc
 
-        numbers = [len(clusters_sets[x]) for x in clusters_sets]
+        clusters_log_perc = get_bug_log_precentile(clusters_sets)
+        numbers = [clusters_log_perc[x] for x in clusters_sets]
         median_value = median(numbers)
         median_absolute_deviation = median_abs_deviation(numbers)
         median_minus_mad = median_value - median_absolute_deviation
         median_plus_mad = median_value + median_absolute_deviation
         middle_ones = [clusters_sets[x] for x in clusters_sets if
-                       median_minus_mad < len(clusters_sets[x]) < median_plus_mad]
+                       median_minus_mad < clusters_log_perc[x] < median_plus_mad]
         return middle_ones
 
     def input_2_dataframe_with_features(self):
