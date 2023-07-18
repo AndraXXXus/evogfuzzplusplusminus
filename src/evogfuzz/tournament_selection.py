@@ -8,7 +8,6 @@ from alhazen import feature_collector
 from evogfuzz.helper import Tournament_Selection_Mode
 from fuzzingbook.GrammarFuzzer import Grammar
 from evogfuzz.input import Input
-import jaro
 import pandas as pd
 from sklearn.metrics import pairwise_distances
 import fastcluster
@@ -19,13 +18,13 @@ from statistics import median
 import Levenshtein
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from jarowinkler import *
 
 
-
-def Levenshtein_ratio(inp1,inp2):
+def levenshtein_ratio(inp1, inp2):
     return Levenshtein.ratio(str(inp1), str(inp2))
 def jaro_jaro_winkler_metric(inp1,inp2):
-    return jaro.jaro_winkler_metric(str(inp1), str(inp2))
+    return jarowinkler_similarity(str(inp1), str(inp2))
 class Tournament:
     def __init__(
             self,
@@ -83,7 +82,7 @@ class Tournament:
         return fittest
 
     def select_fittest_individuals_hierarchical_levenshtein(self):
-        return self.select_fittest_individuals_hierarchical_custom_method(Levenshtein_ratio)
+        return self.select_fittest_individuals_hierarchical_custom_method(levenshtein_ratio)
 
     def select_fittest_individuals_hierarchical_custom_method(self, method):
         self.feature_vectors_dataframe = self.calculate_cosine_similarity()
@@ -115,10 +114,12 @@ class Tournament:
         numbers = [clusters_log_perc[x] for x in clusters_sets]
         median_value = median(numbers)
         median_absolute_deviation = median_abs_deviation(numbers)
-        median_minus_mad = median_value - median_absolute_deviation
+        #median_minus_mad = median_value - median_absolute_deviation
         median_plus_mad = median_value + median_absolute_deviation
+        #middle_ones = [clusters_sets[x] for x in clusters_sets if
+        #               median_minus_mad < clusters_log_perc[x] < median_plus_mad]
         middle_ones = [clusters_sets[x] for x in clusters_sets if
-                       median_minus_mad < clusters_log_perc[x] < median_plus_mad]
+                       median_plus_mad < clusters_log_perc[x]]
         return middle_ones
 
     def input_2_dataframe_with_features(self):

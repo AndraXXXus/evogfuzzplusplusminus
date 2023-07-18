@@ -5,7 +5,7 @@ matplotlib
 isla-solver~=1.10.0
 distance
 jupyter
-jaro-winkler
+jarowinkler
 pandas
 fastcluster
 scipy
