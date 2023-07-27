@@ -88,8 +88,8 @@ class Tournament:
         self.feature_vectors_dataframe = self.calculate_cosine_similarity()
         distance_matrix = pairwise_distances(self.feature_vectors_dataframe, metric=method)
         clusters_sets = self.distance_matrix_2_clusters_sets(distance_matrix)
-        middle_ones = self.filter_clusters_by_bug_log_precentile_median_plus_minus_mad(clusters_sets)
-        self.test_inputs = set([item for sublist in middle_ones for item in sublist])
+        best_clusters = self.filter_clusters_by_bug_log_precentile_median_plus_minus_mad(clusters_sets)
+        self.test_inputs = set([item for sublist in best_clusters for item in sublist])
         return self.select_fittest_individuals_normal()
 
     def select_fittest_individuals_hierarchical_jaro(self):
@@ -118,9 +118,9 @@ class Tournament:
         median_plus_mad = median_value + median_absolute_deviation
         #middle_ones = [clusters_sets[x] for x in clusters_sets if
         #               median_minus_mad < clusters_log_perc[x] < median_plus_mad]
-        middle_ones = [clusters_sets[x] for x in clusters_sets if
+        upper_ones = [clusters_sets[x] for x in clusters_sets if
                        median_plus_mad < clusters_log_perc[x]]
-        return middle_ones
+        return upper_ones
 
     def input_2_dataframe_with_features(self):
         def inputs_to_feature_vectors_func():
