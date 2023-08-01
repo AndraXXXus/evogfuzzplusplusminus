@@ -114,8 +114,9 @@ class Tournament:
             clusters_2_log_perc = {}
             for elem in clusters_sets:
                 fittnes_of_cluster = [x.fitness for x in clusters_sets[elem]]
-                log_fittnes_prec = log(sum(fittnes_of_cluster)+1)/log(len(fittnes_of_cluster)+1)
-                clusters_2_log_perc[elem]=log_fittnes_prec
+                log_fittnes_log_log_prec = log(sum(fittnes_of_cluster)+1)/log(len(fittnes_of_cluster)+1)
+                log_fittnes_numb_log_prec = sum(fittnes_of_cluster) / log(len(fittnes_of_cluster) + 1)
+                clusters_2_log_perc[elem] = log_fittnes_numb_log_prec
             return clusters_2_log_perc
 
         clusters_log_perc = get_bug_log_precentile(clusters_sets)
